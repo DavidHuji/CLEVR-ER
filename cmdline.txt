@@ -1,5 +1,0 @@
-C:\src\clevr-dataset-gen\image_generation
-"C:\Program Files\Blender Foundation\Blender 2.93\blender.exe" --background --python render_images.py -- --output_image_dir "C:\src\clevr-dataset-gen\output\images" --liquid_simulation
-
-
-"C:\Program Files\Blender Foundation\Blender 2.93\blender.exe" --background --python-console
