@@ -90,11 +90,11 @@ def add_object(object_dir, name, scale, loc, theta=0):
     bpy.data.objects[name].name = new_name
 
     # Set the new object as active, then rotate, scale, and translate it
-    x, y = loc
+    x, y, z = loc
     bpy.context.view_layer.objects.active = bpy.data.objects[new_name]
     bpy.context.object.rotation_euler[2] = theta
     bpy.ops.transform.resize(value=(scale, scale, scale))
-    bpy.ops.transform.translate(value=(x, y, scale))
+    bpy.ops.transform.translate(value=(x, y, z + scale))
 
 
 def load_materials(material_dir):

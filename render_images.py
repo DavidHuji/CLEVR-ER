@@ -119,9 +119,9 @@ parser.add_argument('--use_gpu', default=0, type=int,
                     help="Setting --use_gpu 1 enables GPU-accelerated rendering using CUDA. " +
                          "You must have an NVIDIA GPU with the CUDA toolkit installed for " +
                          "to work.")
-parser.add_argument('--width', default=240, type=int,
+parser.add_argument('--width', default=512, type=int,
                     help="The width (in pixels) for the rendered images")
-parser.add_argument('--height', default=240, type=int,
+parser.add_argument('--height', default=512, type=int,
                     help="The height (in pixels) for the rendered images")
 parser.add_argument('--key_light_jitter', default=1.0, type=float,
                     help="The magnitude of random jitter to add to the key light position.")
@@ -180,8 +180,8 @@ def main(args):
                      output_image=img_path,
                      output_scene=scene_path,
                      output_blendfile=blend_path,
+                     iter=i
                      )
-
     # After rendering all images, combine the JSON files for each scene into a
     # single JSON file.
     all_scenes = []
@@ -208,6 +208,7 @@ def render_scene(args,
                  output_image='render.png',
                  output_scene='render_json',
                  output_blendfile=None,
+                 iter=0
                  ):
     # Load the main blendfile
     bpy.ops.wm.open_mainfile(filepath=args.base_scene_blendfile)
@@ -241,6 +242,8 @@ def render_scene(args,
     bpy.context.scene.cycles.samples = args.render_num_samples
     bpy.context.scene.cycles.transparent_min_bounces = args.render_min_bounces
     bpy.context.scene.cycles.transparent_max_bounces = args.render_max_bounces
+    bpy.context.scene.cycles.use_denoising = True
+    bpy.context.scene.cycles.use_adaptive_sampling = True
     if args.use_gpu == 1:
         bpy.context.scene.cycles.device = 'GPU'
 
@@ -308,10 +311,11 @@ def render_scene(args,
 
     # Create liquid domain
     if args.liquid_simulation:
-        scene_struct['liquid_params'] = add_liquid_domain(args, camera)
+        scene_struct['liquid_params'] = add_liquid_domain(args, iter, camera)
         # bpy.ops.fluid.free_all()
-        bpy.ops.fluid.bake_all()
         bpy.context.scene.frame_end = scene_struct['liquid_params']["sim_time"]
+        result = bpy.ops.fluid.bake_all()
+        assert 'FINISHED' in result
         bpy.ops.screen.frame_jump(end=True)
     while True:
         try:
@@ -319,7 +323,8 @@ def render_scene(args,
             break
         except Exception as e:
             print(e)
-
+    # bpy.ops.fluid.free_all()
+    # bpy.ops.fluid.free_data()
     with open(output_scene, 'w') as f:
         json.dump(scene_struct, f, indent=2)
 
@@ -327,7 +332,7 @@ def render_scene(args,
         bpy.ops.wm.save_as_mainfile(filepath=output_blendfile)
 
 
-def add_liquid_domain(args, camera):
+def add_liquid_domain(args, iteration, camera):
     bpy.ops.mesh.primitive_cube_add(size=6,
                                     enter_editmode=False,
                                     align='WORLD',
@@ -336,9 +341,10 @@ def add_liquid_domain(args, camera):
     bpy.context.object.name = "liquid_domain"
     bpy.ops.object.modifier_add(type='FLUID')
     bpy.context.object.modifiers["Fluid"].fluid_type = 'DOMAIN'
-    # bpy.context.object.modifiers["Fluid"].domain_settings.cache_directory = str(Path(args.output_cache_dir))
+    cache_dir = str(Path(args.output_cache_dir, "{:05d}".format(iteration)))
+    bpy.context.object.modifiers["Fluid"].domain_settings.cache_directory = cache_dir
     vis = 0
-    sim_time = 3
+    sim_time = 50
     bpy.context.object.modifiers["Fluid"].domain_settings.domain_type = 'LIQUID'  # GAS
     if vis > 0:
         bpy.context.object.modifiers["Fluid"].domain_settings.use_viscosity = True
@@ -346,17 +352,23 @@ def add_liquid_domain(args, camera):
     bpy.context.object.modifiers["Fluid"].domain_settings.use_mesh = True
     bpy.context.object.modifiers["Fluid"].domain_settings.cache_frame_end = sim_time
     bpy.context.object.modifiers["Fluid"].domain_settings.cache_type = 'ALL'
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_right = False
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_top = False
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_back = False
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_left = False
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_front = False
+    bpy.context.object.modifiers["Fluid"].domain_settings.use_collision_border_bottom = True
     with open(args.properties_json, 'r') as f:
         properties = json.load(f)
         material_mapping = [(v, k) for k, v in properties['liquid_materials'].items()]
         mat_name, mat_name_out = random.choice(material_mapping)
         mat_name_out = "Water"
-        rgb = [42, 75, 215]
-        rgba = [float(c) / 255.0 for c in rgb] + [1.0]
-        utils.add_material(mat_name_out, Color=rgba)
+        # rgb = [42, 75, 215]
+        # rgba = [float(c) / 255.0 for c in rgb] + [1.0]
+        utils.add_material(mat_name_out)
     return {"viscosity": vis,
             "sim_time": sim_time,
-            "rgb": rgb}
+            "rgb": [0, 0, 0]}
 
 def add_random_objects(scene_struct, num_objects, args, camera):
     """
@@ -401,13 +413,14 @@ def add_random_objects(scene_struct, num_objects, args, camera):
                 return add_random_objects(scene_struct, num_objects, args, camera)
             x = random.uniform(-3, 3)
             y = random.uniform(-3, 3)
+            z = random.uniform(0, 6)
             # Check to make sure the new object is further than min_dist from all
             # other objects, and further than margin along the four cardinal directions
             dists_good = True
             margins_good = True
-            for (xx, yy, rr) in positions:
-                dx, dy = x - xx, y - yy
-                dist = math.sqrt(dx * dx + dy * dy)
+            for (xx, yy, zz, rr) in positions:
+                dx, dy, dz = x - xx, y - yy, z - zz
+                dist = math.sqrt(dx * dx + dy * dy + dz * dz)
                 if dist - r - rr < args.min_dist:
                     dists_good = False
                     break
@@ -415,6 +428,15 @@ def add_random_objects(scene_struct, num_objects, args, camera):
                     direction_vec = scene_struct['directions'][direction_name]
                     assert direction_vec[2] == 0
                     margin = dx * direction_vec[0] + dy * direction_vec[1]
+                    if 0 < margin < args.margin:
+                        print(margin, args.margin, direction_name)
+                        print('BROKEN MARGIN!')
+                        margins_good = False
+                        break
+                for direction_name in ['above', 'below']:
+                    direction_vec = scene_struct['directions'][direction_name]
+                    # assert direction_vec[2] == 0
+                    margin = dz * direction_vec[2]
                     if 0 < margin < args.margin:
                         print(margin, args.margin, direction_name)
                         print('BROKEN MARGIN!')
@@ -444,10 +466,10 @@ def add_random_objects(scene_struct, num_objects, args, camera):
         theta = 360.0 * random.random()
 
         # Actually add the object to the scene
-        utils.add_object(args.shape_dir, obj_name, r, (x, y), theta=theta)
+        utils.add_object(args.shape_dir, obj_name, r, (x, y, z), theta=theta)
         obj = bpy.context.object
         blender_objects.append(obj)
-        positions.append((x, y, r))
+        positions.append((x, y, z, r))
 
         # Attach a random material
         mat_name, mat_name_out = random.choice(material_mapping)
@@ -461,12 +483,11 @@ def add_random_objects(scene_struct, num_objects, args, camera):
                 bpy.context.object.modifiers["Fluid"].fluid_type = 'FLOW'
                 bpy.context.object.modifiers["Fluid"].flow_settings.flow_type = 'LIQUID'
                 bpy.context.object.modifiers["Fluid"].flow_settings.flow_behavior = 'INFLOW'
-                bpy.context.object.hide_render = True
+                #bpy.context.object.hide_render = True
             else:
                 bpy.ops.object.modifier_add(type='FLUID')
-                bpy.context.object.modifiers["Fluid"].fluid_type = 'FLOW'
-                bpy.context.object.modifiers["Fluid"].flow_settings.flow_type = 'LIQUID'
-                bpy.context.object.modifiers["Fluid"].flow_settings.flow_behavior = 'GEOMETRY'
+                bpy.context.object.modifiers["Fluid"].fluid_type = 'EFFECTOR'
+                bpy.context.object.modifiers["Fluid"].effector_settings.effector_type = 'COLLISION'
 
         # Record data about the object in the scene data structure
         pixel_coords = utils.get_camera_coords(camera, obj.location)
