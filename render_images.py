@@ -413,7 +413,7 @@ def add_random_objects(scene_struct, num_objects, args, camera):
                 return add_random_objects(scene_struct, num_objects, args, camera)
             x = random.uniform(-3, 3)
             y = random.uniform(-3, 3)
-            z = random.uniform(0, 6)
+            z = random.uniform(0, 4)
             # Check to make sure the new object is further than min_dist from all
             # other objects, and further than margin along the four cardinal directions
             dists_good = True
