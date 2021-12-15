@@ -10,6 +10,7 @@ This file expects to be run from Blender like this:
 blender --background --python render_images.py -- [arguments to this script]
 """
 
+
 INSIDE_BLENDER = True
 try:
     import bpy, bpy_extras
