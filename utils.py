@@ -6,6 +6,10 @@ Some utility functions for interacting with Blender
 """
 
 
+def version_supported(version):
+    return (2, 9, 3) <= version <= (3, 0, 0)
+
+
 def extract_args(input_argv=None):
     """
     Pull out command-line arguments after "--". Blender ignores command-line flags

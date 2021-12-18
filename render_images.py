@@ -1,15 +1,13 @@
 from __future__ import print_function
-import math, sys, random, argparse, json, os, tempfile
+import math, sys, random, argparse, json, os
 from datetime import datetime as dt
 from collections import Counter
 from pathlib import Path
 """
-Supports Blender version == 2.93
+Supports Blender 2.9.3 <= version <= 3.0.0 
 This file expects to be run from Blender like this:
-
 blender --background --python render_images.py -- [arguments to this script]
 """
-
 INSIDE_BLENDER = True
 try:
     import bpy, bpy_extras
@@ -17,18 +15,22 @@ try:
 except ImportError as e:
     INSIDE_BLENDER = False
 if INSIDE_BLENDER:
+    blender_version = bpy.app.version
     try:
         import utils
+        assert utils.version_supported(blender_version)
     except ImportError as e:
-        print("\nERROR")
+        print("\nERROR !")
         print("Running render_images.py from Blender and cannot import utils.py.")
         print("You may need to add a .pth file to the site-packages of Blender's")
         print("bundled python with a command like this:\n")
-        print("echo $PWD >> $BLENDER/$VERSION/python/lib/python3.5/site-packages/clevr.pth")
-        print("\nWhere $BLENDER is the directory where Blender is installed, and")
-        print("$VERSION is your Blender version (such as 2.78).")
+        print("echo $PWD > $BLENDER/$VERSION/python/lib/python3.5/site-packages/liquid.pth")
+        print("\nWhere: \n$PWD is current working directory ({})\n"
+              "$BLENDER is the directory where Blender is installed ({})\n"
+              "$VERSION is your Blender version ({}).".format(Path().absolute(),
+                                                              Path(bpy.app.binary_path).parent,
+                                                              blender_version))
         sys.exit(1)
-
 parser = argparse.ArgumentParser()
 
 # Input options
@@ -225,8 +227,11 @@ def render_scene(args,
     render_args.resolution_x = args.width
     render_args.resolution_y = args.height
     render_args.resolution_percentage = 100
-    render_args.tile_x = args.render_tile_size
-    render_args.tile_y = args.render_tile_size
+    if blender_version >= (3, 0, 0) and blender_version < (4, 0, 0):
+        bpy.context.scene.cycles.tile_size = args.render_tile_size
+    else:
+        render_args.tile_x = args.render_tile_size
+        render_args.tile_y = args.render_tile_size
     if args.use_gpu == 1:
         # Blender changed the API for enabling CUDA at some point
         if bpy.app.version < (2, 78, 0):
