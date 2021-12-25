@@ -308,15 +308,19 @@ def render_scene(args,
             bpy.data.objects['Lamp_Fill'].location[i] += rand(args.fill_light_jitter)
 
     # Now make some random objects
-    objects, blender_objects = add_random_objects(scene_struct, num_objects, args, camera)
+    if args.liquid_simulation:  # liquid_setup 0=no fluid, 1=water, 2=viscous liquid
+        liquid_setup = random.randint(0, 2)
+    else:
+        liquid_setup = 0
+    objects, blender_objects = add_random_objects(scene_struct, num_objects, args, camera, liquid_setup)
 
     # Render the scene and dump the scene data structure
     scene_struct['objects'] = objects
     scene_struct['relationships'] = compute_all_relationships(scene_struct)
 
     # Create liquid domain
-    if args.liquid_simulation:
-        scene_struct['liquid_params'] = add_liquid_domain(args, iter, camera)
+    if liquid_setup > 0:
+        scene_struct['liquid_params'] = add_liquid_domain(args, iter, camera, liquid_setup)
         # bpy.ops.fluid.free_all()
         bpy.context.scene.frame_end = scene_struct['liquid_params']["sim_time"]
         result = bpy.ops.fluid.bake_all()
@@ -337,7 +341,7 @@ def render_scene(args,
         bpy.ops.wm.save_as_mainfile(filepath=output_blendfile)
 
 
-def add_liquid_domain(args, iteration, camera):
+def add_liquid_domain(args, iteration, camera, liquid_setup):
     bpy.ops.mesh.primitive_cube_add(size=6,
                                     enter_editmode=False,
                                     align='WORLD',
@@ -348,8 +352,11 @@ def add_liquid_domain(args, iteration, camera):
     bpy.context.object.modifiers["Fluid"].fluid_type = 'DOMAIN'
     cache_dir = str(Path(args.output_cache_dir, "{:05d}".format(iteration)))
     bpy.context.object.modifiers["Fluid"].domain_settings.cache_directory = cache_dir
-    vis = 0
     sim_time = 50
+    vis = 0
+    if liquid_setup == 2:
+        vis = 0.05
+        sim_time = 100
     bpy.context.object.modifiers["Fluid"].domain_settings.domain_type = 'LIQUID'  # GAS
     if vis > 0:
         bpy.context.object.modifiers["Fluid"].domain_settings.use_viscosity = True
@@ -375,7 +382,8 @@ def add_liquid_domain(args, iteration, camera):
             "sim_time": sim_time,
             "rgb": [0, 0, 0]}
 
-def add_random_objects(scene_struct, num_objects, args, camera):
+
+def add_random_objects(scene_struct, num_objects, args, camera, liquid_setup):
     """
     Add random objects to the current blender scene
     """
@@ -399,7 +407,7 @@ def add_random_objects(scene_struct, num_objects, args, camera):
     positions = []
     objects = []
     blender_objects = []
-
+    rand_mat = random.randint(0, 1)
     for i in range(num_objects):
         # Choose a random size
         size_name, r = random.choice(size_mapping)
@@ -415,10 +423,15 @@ def add_random_objects(scene_struct, num_objects, args, camera):
             if num_tries > args.max_retries:
                 for obj in blender_objects:
                     utils.delete_object(obj)
-                return add_random_objects(scene_struct, num_objects, args, camera)
+                return add_random_objects(scene_struct, num_objects, args, camera, liquid_setup)
             x = random.uniform(-3, 3)
             y = random.uniform(-3, 3)
-            z = random.uniform(0, 4)
+            if i == 0:  # this object is always above the second one (as it is possibly a liquid source)
+                z = random.uniform(1, 4)
+            elif i == 1:
+                z = 0  # this effector is on the ground
+            else:
+                raise NotImplementedError
             # Check to make sure the new object is further than min_dist from all
             # other objects, and further than margin along the four cardinal directions
             dists_good = True
@@ -476,11 +489,17 @@ def add_random_objects(scene_struct, num_objects, args, camera):
         blender_objects.append(obj)
         positions.append((x, y, z, r))
 
-        # Attach a random material
-        mat_name, mat_name_out = random.choice(material_mapping)
+        # Attach a separate material per object
+        if i == 0:
+            mat_name, mat_name_out = material_mapping[rand_mat]
+        elif i == 1:
+            mat_name, mat_name_out = material_mapping[1 - rand_mat]
+        else:
+            raise NotImplementedError
+        # mat_name, mat_name_out = random.choice(material_mapping)
         utils.add_material(mat_name, Color=rgba)
         liquid_src = False
-        if args.liquid_simulation:
+        if liquid_setup > 0:
             # Make source if this is first objectS
             if i == 0:
                 liquid_src = True
@@ -516,7 +535,7 @@ def add_random_objects(scene_struct, num_objects, args, camera):
         print('Some objects are occluded; replacing objects')
         for obj in blender_objects:
             utils.delete_object(obj)
-        return add_random_objects(scene_struct, num_objects, args, camera)
+        return add_random_objects(scene_struct, num_objects, args, camera, liquid_setup)
 
     return objects, blender_objects
 
