@@ -507,6 +507,7 @@ def add_random_objects(scene_struct, num_objects, args, camera, liquid_setup):
                 bpy.context.object.modifiers["Fluid"].fluid_type = 'FLOW'
                 bpy.context.object.modifiers["Fluid"].flow_settings.flow_type = 'LIQUID'
                 bpy.context.object.modifiers["Fluid"].flow_settings.flow_behavior = 'INFLOW'
+                bpy.context.object.modifiers["Fluid"].flow_settings.use_plane_init = True
                 #bpy.context.object.hide_render = True
             else:
                 bpy.ops.object.modifier_add(type='FLUID')
