@@ -237,10 +237,9 @@ def render_scene(args,
         if bpy.app.version < (2, 78, 0):
             bpy.context.user_preferences.system.compute_device_type = 'CUDA'
             bpy.context.user_preferences.system.compute_device = 'CUDA_0'
-        else:
+        elif bpy.app.version < (3, 0, 0):
             cycles_prefs = bpy.context.user_preferences.addons['cycles'].preferences
             cycles_prefs.compute_device_type = 'CUDA'
-
     # Some CYCLES-specific stuff
     bpy.data.worlds['World'].cycles.sample_as_light = True
     bpy.context.scene.cycles.blur_glossy = 2.0
@@ -350,7 +349,8 @@ def add_liquid_domain(args, iteration, camera, liquid_setup):
     bpy.context.object.name = "liquid_domain"
     bpy.ops.object.modifier_add(type='FLUID')
     bpy.context.object.modifiers["Fluid"].fluid_type = 'DOMAIN'
-    cache_dir = str(Path(args.output_cache_dir, "{:05d}".format(iteration)))
+    # cache_dir = str(Path(args.output_cache_dir, "{:05d}".format(iteration)))
+    cache_dir = str(Path(args.output_cache_dir))
     bpy.context.object.modifiers["Fluid"].domain_settings.cache_directory = cache_dir
     sim_time = 50
     vis = 0
