@@ -1,6 +1,6 @@
 # Liquid synthetic data
 
-This project creates synthetic data similar to CLEVR, only it supports much later versions of Blender (2.93 <= v <= 3.0.0) and allows liquid properties for the objects created for relations predictions. 
+The focus of this dataset is to enable diagnosis of relations understanding. This project creates synthetic data similar to CLEVR, only it supports much later versions of Blender (2.93 <= v <= 3.0.0) and allows liquid properties for the objects created for relations predictions. It also suppurt a few other sort of relation as comperative relations and spatial relations. 
 
 # Download 
 
