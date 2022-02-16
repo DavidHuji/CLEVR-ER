@@ -21,18 +21,19 @@ print("using device ", device)
 DBG_MODE = not torch.cuda.is_available()
 # print(f'dbg mod ={DBG_MODE}')
 
-DATA_SIZE = 40 if DBG_MODE else 5000
+DATA_SIZE = 15 if DBG_MODE else 5000
 NUM_WORKERS = 1 if DBG_MODE else 1
 GPUS = 0 if DBG_MODE else 1
 
-amount_of_options_per_relation = [3, 2, 2, 4, 2, 5]
+USE_CLIP = True
+amount_of_options_per_relation = [3, 2, 2, 4, 5, 2]
 
-BATCH_SIZE = 2 if DBG_MODE else 8
+BATCH_SIZE = 3 if DBG_MODE else 8
 mlp_width = int(math.pow(2, 10 if not DBG_MODE else 10))
 amount_of_relations_types, amount_of_options_for_relations_type = 6, 5
-visual_features_size = 128
+visual_features_size = 512 if USE_CLIP else 128
 
-OUTPUT_MODE = 1  # 0-5 IS FOR SINGLE RELATION, 6 IS FOR ALL REL TOGETHER.
+OUTPUT_MODE = 6  # 0-5 IS FOR SINGLE RELATION, 6 IS FOR ALL REL TOGETHER.
 all_rels_together = OUTPUT_MODE == 6
 relation_to_train = OUTPUT_MODE
 
@@ -42,44 +43,48 @@ else:
     train_total_rels, train_total_options = 1, amount_of_options_per_relation[relation_to_train]
 gt_relations_amount = train_total_rels * train_total_options
 
-#model, preprocess = clip.load("ViT-B/32", device=device)
-# # model, preprocess = clip.load("RN50", device=device)
-# model.eval()
-
 losses = [nn.CrossEntropyLoss().to(device) for i in range(amount_of_relations_types)]
 accuracies = [0 for _ in range(amount_of_relations_types)]
 
 
 class FeatureExtractor(nn.Module):
-    def __init__(self, out_size, freeze=True):
+    def __init__(self, out_size, freeze=True, use_clip=USE_CLIP):
         super(FeatureExtractor, self).__init__()
-        inner_model = models.vgg16(pretrained=True).to(device)
-        # Extract VGG-16 Feature Layers
-        self.features = list(inner_model.features)
-        self.features = nn.Sequential(*self.features)
-        # Extract VGG-16 Average Pooling Layer
-        self.pooling = inner_model.avgpool
-        # Convert the image into one-dimensional vector
-        self.flatten = nn.Flatten()
-        # Extract the first part of fully-connected layer from VGG16
-        self.fc = nn.Linear(25088, out_size)
+        self.use_clip = use_clip
+        if use_clip:
+            self.clip_model, self.preprocess = clip.load("ViT-B/32", device=device)  # try "RN50"
+            for param in self.clip_model.parameters():
+                param.requires_grad = not freeze
+        else:
+            inner_model = models.vgg16(pretrained=True).to(device)
+            # Extract VGG-16 Feature Layers
+            self.features = list(inner_model.features)
+            self.features = nn.Sequential(*self.features)
+            # Extract VGG-16 Average Pooling Layer
+            self.pooling = inner_model.avgpool
+            # Convert the image into one-dimensional vector
+            self.flatten = nn.Flatten()
+            # Extract the first part of fully-connected layer from VGG16
+            self.fc = nn.Linear(25088, out_size)
 
-        for param in self.features.parameters():
-            param.requires_grad = not freeze
+            for param in self.features.parameters():
+                param.requires_grad = not freeze
         self.to(device)
 
     def forward(self, x):
         self.to(device)
-        # It will take the input 'x' until it returns the feature vector called 'out'
-        out = self.features(x)
-        out = self.pooling(out)
-        out = self.flatten(out)
-        out = self.fc(out)
+        if self.use_clip:
+            out = self.clip_model.encode_image(x)
+        else:
+            out = self.features(x)
+            out = self.pooling(out)
+            out = self.flatten(out)
+            out = self.fc(out)
         return out
 
 
 class MLP_on_features(pl.LightningModule):
-    def __init__(self, input_dim=(visual_features_size + (2 * 24) + 1), freeze_feat_extract=True):
+    def __init__(self, input_dim=(visual_features_size + (2 * 24) + 1 + 4), freeze_feat_extract=True):
         super().__init__()
         self.mlp_layers = nn.Sequential(
             nn.Linear(input_dim, mlp_width),
@@ -106,7 +111,7 @@ class MLP_on_features(pl.LightningModule):
         mlp_in = torch.cat((feats, ndxs.to(device)), 1).to(device)
         self.to(device)
         mlp_out = self.mlp_layers(mlp_in)
-        return torch.reshape(mlp_out, (BATCH_SIZE, train_total_rels, train_total_options))
+        return torch.reshape(mlp_out, (-1, train_total_rels, train_total_options))
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -116,11 +121,13 @@ class MLP_on_features(pl.LightningModule):
         if all_rels_together:
             for i in range(train_total_rels):
                 total_loss += losses[i](y_hat[:, i, :], y[:, i].long())
-                accuracy += ((np.argmax(y_hat[:, i, :].cpu().detach().numpy()) == y[:, i].long()) * 1).sum() / BATCH_SIZE
+                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().numpy()) * 1).sum() / BATCH_SIZE
+                accuracy += acc_of_rel_i
+                self.log(f"{i}_train_acc", acc_of_rel_i, prog_bar=False)
             accuracy /= amount_of_relations_types
         else:
             total_loss += losses[0](y_hat[:, 0, :], y[:, relation_to_train].long())
-            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy()) == y[:, relation_to_train].long()) * 1).sum() / BATCH_SIZE
+            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().numpy()) * 1).sum() / BATCH_SIZE
 
         self.log("train_loss", total_loss, prog_bar=True)
         self.log("train_acc", accuracy, prog_bar=True)
@@ -135,11 +142,14 @@ class MLP_on_features(pl.LightningModule):
         if all_rels_together:
             for i in range(train_total_rels):
                 total_loss += losses[i](y_hat[:, i, :], y[:, i].long())
-                accuracy += ((np.argmax(y_hat[:, i, :].cpu().detach().numpy()) == y[:, i].long()) * 1).sum() / BATCH_SIZE
+                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().numpy()) * 1).sum() / BATCH_SIZE
+                accuracy += acc_of_rel_i
+                self.log(f"{i}_val_acc", acc_of_rel_i, prog_bar=False)
+
             accuracy /= amount_of_relations_types
         else:
             total_loss += losses[0](y_hat[:, 0, :], y[:, relation_to_train].long())
-            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy()) == y[:, relation_to_train].long()) * 1).sum() / BATCH_SIZE
+            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().numpy()) * 1).sum() / BATCH_SIZE
 
         self.log("val_loss", total_loss, prog_bar=True)
         self.log("val_acc", accuracy, prog_bar=True)

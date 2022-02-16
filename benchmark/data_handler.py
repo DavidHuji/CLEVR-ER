@@ -86,7 +86,7 @@ class CustomCLEVRImageDataset(Dataset):
         if self.use_random_location_of_main_index:
             random_obg = random.randint(0, 1)  # randomly choose who is the obj and subj from the two possible object
         else:
-            random_obg = 0
+            random_obg = 1
         obj_1 = item['objects'][random_obg]
         obj_2 = item['objects'][(random_obg + 1) % 2]
         name_1 = item['objects'][random_obg]['color'] + ' ' + item['objects'][random_obg]['shape']
@@ -113,7 +113,8 @@ class CustomCLEVRImageDataset(Dataset):
             else:
                 print('error - wired viscosity - ', item['liquid_params']['viscosity'])
 
-        return np.array([greater_than, higher_than, material_relation, relative_location, flow_relation, closer_than]), (ndx_1, ndx_2, torch.Tensor([random_obg]))
+        location1, location2 = [obj_1['pixel_coords'][0], obj_1['pixel_coords'][1]], [obj_2['pixel_coords'][0], obj_2['pixel_coords'][1]]
+        return np.array([greater_than, higher_than, material_relation, relative_location, flow_relation, closer_than]), (ndx_1 / 24 - 0.5, ndx_2 / 24 - 0.5, torch.Tensor([random_obg-0.5]), torch.Tensor(location1), torch.Tensor(location2))
         #       amounts of options:  c  #18 options
 
     @staticmethod
