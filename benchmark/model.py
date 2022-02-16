@@ -121,13 +121,13 @@ class MLP_on_features(pl.LightningModule):
         if all_rels_together:
             for i in range(train_total_rels):
                 total_loss += losses[i](y_hat[:, i, :], y[:, i].long())
-                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().numpy()) * 1).sum() / BATCH_SIZE
+                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().cpu().numpy()) * 1).sum() / BATCH_SIZE
                 accuracy += acc_of_rel_i
                 self.log(f"{i}_train_acc", acc_of_rel_i, prog_bar=False)
             accuracy /= amount_of_relations_types
         else:
             total_loss += losses[0](y_hat[:, 0, :], y[:, relation_to_train].long())
-            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().numpy()) * 1).sum() / BATCH_SIZE
+            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().cpu().numpy()) * 1).sum() / BATCH_SIZE
 
         self.log("train_loss", total_loss, prog_bar=True)
         self.log("train_acc", accuracy, prog_bar=True)
@@ -142,14 +142,14 @@ class MLP_on_features(pl.LightningModule):
         if all_rels_together:
             for i in range(train_total_rels):
                 total_loss += losses[i](y_hat[:, i, :], y[:, i].long())
-                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().numpy()) * 1).sum() / BATCH_SIZE
+                acc_of_rel_i = ((np.argmax(y_hat[:, i, :].cpu().detach().numpy(), axis=1) == y[:, i].long().cpu().numpy()) * 1).sum() / BATCH_SIZE
                 accuracy += acc_of_rel_i
                 self.log(f"{i}_val_acc", acc_of_rel_i, prog_bar=False)
 
             accuracy /= amount_of_relations_types
         else:
             total_loss += losses[0](y_hat[:, 0, :], y[:, relation_to_train].long())
-            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().numpy()) * 1).sum() / BATCH_SIZE
+            accuracy += ((np.argmax(y_hat[:, 0, :].cpu().detach().numpy(), axis=1) == y[:, relation_to_train].long().cpu().numpy()) * 1).sum() / BATCH_SIZE
 
         self.log("val_loss", total_loss, prog_bar=True)
         self.log("val_acc", accuracy, prog_bar=True)
