@@ -7,8 +7,11 @@ The focus of this dataset is to enable diagnosis of relations understanding. Thi
 [Here](https://drive.google.com/file/d/1thvwm6BochjJcTgCNSlOvbULzlSZl4q6/view?usp=sharing) you can download the dataset we used for the relations benchmark. There are 5500 samples in this link. you can render more samples with the code if you want.
 
 # Examples 
-![teaser1](resource/splash1.png)
 
-![teaser2](resource/splash2.png)
-
-![teaser3](resource/splash3.png)
+<table>
+  <tr>
+    <td> <img src="https://github.com/yoterel/CLEVR-ER/blob/main/resource/splash1.png"  alt="1" width = 256px height = 256px ></td>
+    <td> <img src="https://github.com/yoterel/CLEVR-ER/blob/main/resource/splash2.png"  alt="2" width = 256px height = 256px ></td>
+    <td> <img src="https://github.com/yoterel/CLEVR-ER/blob/main/resource/splash3.png"  alt="3" width = 256px height = 256px ></td>
+   </tr>
+</table>
