@@ -4,7 +4,7 @@ The focus of this dataset is to enable diagnosis of relations understanding. Thi
 
 # Download 
 
-[Here](https://drive.google.com/file/d/1thvwm6BochjJcTgCNSlOvbULzlSZl4q6/view?usp=sharing) you can download the dataset we used for the relations benchmark. There are 5500 samples in this link. you can render more samples with the code if you want.
+[Here](https://drive.google.com/file/d/1thvwm6BochjJcTgCNSlOvbULzlSZl4q6/view?usp=sharing) you can download the dataset we used for the relations benchmark. There are 5000 samples in this link. you can render more samples with the code if you want.
 
 # Examples 
 
