@@ -26,12 +26,13 @@ NUM_WORKERS = 1 if DBG_MODE else 1
 GPUS = 0 if DBG_MODE else 1
 
 USE_CLIP = True
+CLIP_MODE = "ViT-B/32"  # try "RN50" "ViT-B/32"
 amount_of_options_per_relation = [3, 2, 2, 4, 5, 2]
 
-BATCH_SIZE = 3 if DBG_MODE else 8
+BATCH_SIZE = 3 if DBG_MODE else 16
 mlp_width = int(math.pow(2, 10 if not DBG_MODE else 10))
 amount_of_relations_types, amount_of_options_for_relations_type = 6, 5
-visual_features_size = 512 if USE_CLIP else 128
+visual_features_size = (512 if CLIP_MODE == "ViT-B/32" else 1024) if USE_CLIP else 128
 
 OUTPUT_MODE = 6  # 0-5 IS FOR SINGLE RELATION, 6 IS FOR ALL REL TOGETHER.
 all_rels_together = OUTPUT_MODE == 6
@@ -52,7 +53,7 @@ class FeatureExtractor(nn.Module):
         super(FeatureExtractor, self).__init__()
         self.use_clip = use_clip
         if use_clip:
-            self.clip_model, self.preprocess = clip.load("ViT-B/32", device=device)  # try "RN50"
+            self.clip_model, self.preprocess = clip.load(CLIP_MODE, device=device)
             for param in self.clip_model.parameters():
                 param.requires_grad = not freeze
         else:
@@ -187,8 +188,6 @@ def regular_training():
             # x = x.view(x.size(0), -1)
             y_hat = my_model(x)
             # loss = F.mse_loss(y_hat, y.to(torch.float32))
-            # todo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-            # todo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             total_loss = 0
             for k in range(amount_of_relations_types):
                 total_loss += losses[k](y_hat[:, k, :], y[:, k].long())
@@ -205,18 +204,6 @@ def regular_training():
                 running_loss = 0.0
 
     print('Finished Training')
-
-
-def run_exp():
-    dataset = CustomCLEVRImageDataset(DATA_SIZE)
-    test_size = int(DATA_SIZE * 0.2)
-    train, val = random_split(dataset, [DATA_SIZE - test_size, test_size])
-    my_model = MLP_on_features().to(device)
-    my_model.feat_extract.to(device)
-    trainer = pl.Trainer(gpus=GPUS, max_epochs=50, progress_bar_refresh_rate=20)
-    trainer.fit(my_model, DataLoader(train, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS),
-                DataLoader(val, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS))
-
 
 if __name__ == '__main__':
     # regular_training()
