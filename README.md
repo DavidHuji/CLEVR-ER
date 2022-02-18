@@ -20,5 +20,5 @@ The focus of this dataset is to enable diagnosis of relations understanding. Thi
 # Baseline
 
 Relations\model| random | vgg-features | Clip ViT | Clip RN50 | vgg no location input
---- | --- | --- | --- |--- |--- |--- |--- |--- |--- |--- |---
-Seconds | 301 | 283 | 290 | 286 | 289 
+---            |    --- | ---          | ---      |---        |---
+Seconds        | 301    | 283          | 290      | 286       | 289 
