@@ -22,4 +22,9 @@ The focus of this dataset is to enable diagnosis of relations understanding. Thi
 | Relations\model| random | vgg-features | Clip ViT | Clip RN50 | vgg no location input
 | ---            |    --- | ---          | ---      |---        |---
 | Greater        | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
-| Higher        | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
+| Higher         | 0.33    | 0.87        | 0.47     | 0.48      | 0.858 
