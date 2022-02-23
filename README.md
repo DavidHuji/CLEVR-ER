@@ -16,8 +16,16 @@ The focus of this dataset is to enable diagnosis of relations understanding. Thi
    </tr>
 </table>
 
+# Running Example
+To create random data, you can run the following. It is recommended to follow the instructions of the original CLEVR dataset to have full flexibility in those configurations.
+/Applications/Blender.app/Contents/MacOS/blender  --background --python render_images.py -- --num_images 1 --min_objects 2 --max_objects 2 --liquid_simulation
 
-# Baseline
+For training the benchmark, you can simply run the model.py file. For help and configuration details add the flag -h.
+
+# Installation
+Follow the exact installation instructions of te original CLEVR but use Blender version of (2.93 <= v <= 3.0.0) to allow liquid properties.
+
+# Baseline Results
 
 | Relations\model| random | vgg-features | Clip ViT | Clip RN50 | vgg no location input
 | ---            |    --- | ---          | ---      |---        |---
