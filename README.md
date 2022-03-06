@@ -1,7 +1,7 @@
 # CLEVR-ER - A relational synthetic dataset with liquids
 
 The focus of this dataset is to enable diagnosis of relations understanding. This project creates synthetic data similar to CLEVR, only it supports later versions of Blender (2.93 <= v <= 3.0.0) and allows liquid properties for the objects created for relations predictions. It also suppurt a few other sort of relation as comperative relations and spatial relations. 
-[G-Slides](https://docs.google.com/presentation/d/18cVUpvwEqYvGGdlF3Xw5WhNWMEfh4aGvlJjgJAnGhG0/edit?usp=sharing)
+For more details, see our [G-Slides](https://docs.google.com/presentation/d/18cVUpvwEqYvGGdlF3Xw5WhNWMEfh4aGvlJjgJAnGhG0/edit?usp=sharing)
 
 # Download 
 
